@@ -4,12 +4,12 @@ This is a sample project to create and deploy 3 tier application into Kubernetes
 
 This application has only been tested on Windows 10/11.  It may work on other OS's but no guarantee.  
 
-It is composed of 3 parts:
+It is composed of 4 parts:
 
 1. [Angular 14 front-end](docker-sample-angular) - See the docker-sample-angular folder
 2. [Spring / Maven back-end](springboot-crud) - See the springboot-crud folder
 3. [MySQL 8 database server](docker-mysql-8) - See the docker-mysql-8 folder
-4. [MySQL 8 database server](docker-mysql-8) - See the docker-mysql-8 folder
+4. [K8s](k8s) - See the k8s folder.  This is where all of our Kubernetes specific deployment manifests are held
 
 
 ## Dependencies
@@ -24,7 +24,10 @@ It is composed of 3 parts:
 1. NPM
 
 ## Architecture
-[Architecture](assets/architecture.png)
+
+Standard 3-tier Angular / Spring / MySQL
+
+![Architecture](support/architecture.png)
 
 ## Troubleshooting commands
 1.  Show info about running pod - `kubectl get pods -o wide`
@@ -62,7 +65,7 @@ Setup the DB
 1. `exit` //exit the pod / bash
 1. `kubectl delete pod {podname}`  //this will kill the pod, but don't worry, since we used a deployment, Kubernetes will automatically restart a new pod
 1. `kubectl get pods -o wide` //node that the pod was restarted
-1. `kubectl port-forward {podname} 3306:3306` //set-up port-forwarding so we can have access to the DB
+1. `kubectl port-forward {podname} 3306:3306` //set-up port-forwarding so we can have access to the DB, otherwise, i have to use mysql commands within the pod itself
 1. Open up Workbench, point at localhost:3306
 1. Create some data
 ```
