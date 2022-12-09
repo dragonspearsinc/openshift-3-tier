@@ -1,6 +1,6 @@
 ## Intent
 
-This is a sample project to create and deploy a dockerized 3 tier application.  It is NOT production ready and should not be considered to be production code. It is purely to demonstrate the build / deploy of dockerized applications.  
+This is a sample project to create and deploy 3 tier application into Kubernetes.  It is NOT production ready and should not be considered to be production code. It is purely to demonstrate the build / deploy of dockerized applications onto a Kubernetes platform.  
 
 This application has only been tested on Windows 10/11.  It may work on other OS's but no guarantee.  
 
@@ -35,31 +35,85 @@ It is composed of 3 parts:
 
 ## First Time Process to run the application
 
+#
+Build the app - We could configure the CI to do this in an automated fashion
+#
 1. `git clone https://github.com/dragonspearsinc/kubernetes-3-tier`
 1. `cd kubernetes-3-tier`
 1. Build the frontend (this could be done by the CI) - `docker build -t dragonspears/frontend ./docker-sample-angular`
 1. Build the frontend (this could be done by the CI) - `docker build -t dragonspears/backend ./springboot-crud`
+
+#
+Deploy the app
+#
 1. Review what will be deployed - `kubectl kustomize ./k8s`
 1. `kubectl apply -k k8s` This command is similar to docker compose up and uses a simlar file called [kustomize.yaml](k8s/kustomization.yaml) which creates the pods using Kubernetes specific syntax vs. Docker
-    - Note:  To remove the directory deployment, run `kubectl delete -k k8s`
-1. `kubectl get deployment` - Review what was deployed
-1. `kubectl get pods -o wide` - Review the pods
-1. `kubectl get services` - Review the services
-1. `docker exec -it docker-sample-3-tier-db-1 mysql -uroot -p`  //default passwrd is `123456`
+    - Note:  To remove the directory based deployment, run `kubectl delete -k k8s`
+
+#
+Setup the DB
+#
+1. `kubectl get pods -o wide` - Review the pods, look at how the IP's are private, non-routable, make note of the db pod name
+1. `kubectl exec -it {podname} /bin/bash` 
+1. `mysql -p`  //default password is `123456`
 1. `update mysql.user set host = '%' where user='admin';`
 1. `update mysql.user set host = '%' where user='root';`
-1. `docker restart docker-sample-3-tier-db-1`
-1. Open up Workbench
-1. [Create Employee Schema](docker-mysql-8/create-schema.sql)
-1. [Create Table Called Employee](docker-mysql-8/create-table.sql) 
-1. [Create Some Data](docker-mysql-8/create-data.sql) 
-1. Open up Postman, do a GET on `http://localhost:8080/api/employees/` -- This tests connectivity to the DB via the Spring/Maven backend.
-1. Open up the browser to:  `http://localhost:3000` -- This will show end to end connectivity, no employees, and show an environment variable being used (if it has been created in a `.env` file).  
+1. `exit`  //exit the mysql
+1. `exit` //exit the pod / bash
+1. `kubectl delete pod {podname}`  //this will kill the pod, but don't worry, since we used a deployment, Kubernetes will automatically restart a new pod
+1. `kubectl get pods -o wide` //node that the pod was restarted
+1. `kubectl port-forward {podname} 3306:3306` //set-up port-forwarding so we can have access to the DB
+1. Open up Workbench, point at localhost:3306
+1. Create some data
+```
+CREATE SCHEMA `employee-schema`;
 
-## Run the application
+CREATE TABLE `employee-schema`.`employee` (
+  `emp_id` INT(11) NOT NULL AUTO_INCREMENT,
+  `first_name` VARCHAR(45) NULL,
+  `last_name` VARCHAR(45) NULL,
+  `email_id` VARCHAR(45) NULL,
+  PRIMARY KEY (`emp_id`));
 
-1. `docker compose up -d`
+INSERT INTO `employee-schema`.`employee` (`emp_id`, `first_name`, `last_name`, `email_id`) VALUES ('1', 'k8s first 1', 'first 1', 'email 1');
+INSERT INTO `employee-schema`.`employee` (`emp_id`, `first_name`, `last_name`, `email_id`) VALUES ('2', 'k8s first 2', 'first 2', 'email 2');
+INSERT INTO `employee-schema`.`employee` (`emp_id`, `first_name`, `last_name`, `email_id`) VALUES ('3', 'k8s first 3', 'first 3', 'email 3');
+```
+#
+Test the deployment
+#
+
+Let's connect to the services.  No need to port-forward
+1. `kubectl get services -o wide` - Review the services.
+1. Open a *browser* to: `http://localhost:8080`
+
+![Browser](./support/Browser%203000.png)
+1. Open your *postman* to: `http://localhost:8080`
+
+![Postman](./support/Postman%20Image%208080.png)
 
 ## Stop the application
 
-1. `docker compose down`
+1. `kubectl delete -k k8s`
+
+## Scenarios
+
+# Update the Deployment Replicas
+
+1. Open up `./k8s/frontend-deployment.yaml`
+1. Change the `replicas: 1` to `replicas: 4`
+1. `kubectl apply -k k8s`
+1. `kubectl describe deployment frontend` Review the deployment, show it has changed
+1. `kubectl get pods -o wide`
+
+![Replicas](./support/Replicas.png)
+
+# Update the Deployment to use external (outside K8s) DB
+
+** Note:  This section assumes you have a mysql running external to the cluster, configured, and has data
+
+1. Open up `./k8s/backend-deployment.yaml`
+1. Change the connection string from `jdbc:mysql://db:3306/employee-schema` to `jdbc:mysql://db:3306/employee-schema`
+1. `kubectl apply -k k8s`
+1. `kubectl describe deployment backend` Review the deployment, show it has changed
+1. Open a browser to see how the data is now changed: http://localhost:3000
