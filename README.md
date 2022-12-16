@@ -105,14 +105,5 @@ INSERT INTO `employee-schema`.`employee` (`emp_id`, `first_name`, `last_name`, `
 1. Paste in `123456`
 1. Save
 
-## Scenarios
-
-# Update the Deployment Replicas
-
-1. Open up `./k8s/frontend-deployment.yaml`
-1. Change the `replicas: 1` to `replicas: 4`
-1. `kubectl apply -k k8s`
-1. `kubectl describe deployment frontend` Review the deployment, show it has changed
-1. `kubectl get pods -o wide`
 
 
